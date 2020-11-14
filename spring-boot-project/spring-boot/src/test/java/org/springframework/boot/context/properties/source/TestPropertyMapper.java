@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,10 @@
 package org.springframework.boot.context.properties.source;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.Function;
+import java.util.Map;
 
-import org.springframework.core.env.PropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -29,40 +29,28 @@ import org.springframework.util.MultiValueMap;
  */
 class TestPropertyMapper implements PropertyMapper {
 
-	private MultiValueMap<String, PropertyMapping> fromSource = new LinkedMultiValueMap<>();
+	private MultiValueMap<ConfigurationPropertyName, String> fromConfig = new LinkedMultiValueMap<>();
 
-	private MultiValueMap<ConfigurationPropertyName, PropertyMapping> fromConfig = new LinkedMultiValueMap<>();
+	private Map<String, ConfigurationPropertyName> fromSource = new LinkedHashMap<>();
 
-	public void addFromPropertySource(String from, String... to) {
-		for (String configurationPropertyName : to) {
-			this.fromSource.add(from, new PropertyMapping(from,
-					ConfigurationPropertyName.of(configurationPropertyName)));
-		}
+	void addFromPropertySource(String from, String to) {
+		this.fromSource.put(from, ConfigurationPropertyName.of(to));
 	}
 
-	public void addFromConfigurationProperty(ConfigurationPropertyName from,
-			String... to) {
+	void addFromConfigurationProperty(ConfigurationPropertyName from, String... to) {
 		for (String propertySourceName : to) {
-			this.fromConfig.add(from, new PropertyMapping(propertySourceName, from));
+			this.fromConfig.add(from, propertySourceName);
 		}
 	}
 
-	public void addFromConfigurationProperty(ConfigurationPropertyName from, String to,
-			Function<Object, Object> extractor) {
-		this.fromConfig.add(from, new PropertyMapping(to, from, extractor));
+	@Override
+	public List<String> map(ConfigurationPropertyName configurationPropertyName) {
+		return this.fromConfig.getOrDefault(configurationPropertyName, Collections.emptyList());
 	}
 
 	@Override
-	public List<PropertyMapping> map(PropertySource<?> propertySource,
-			String propertySourceName) {
-		return this.fromSource.getOrDefault(propertySourceName, Collections.emptyList());
-	}
-
-	@Override
-	public List<PropertyMapping> map(PropertySource<?> propertySource,
-			ConfigurationPropertyName configurationPropertyName) {
-		return this.fromConfig.getOrDefault(configurationPropertyName,
-				Collections.emptyList());
+	public ConfigurationPropertyName map(String propertySourceName) {
+		return this.fromSource.getOrDefault(propertySourceName, ConfigurationPropertyName.EMPTY);
 	}
 
 }

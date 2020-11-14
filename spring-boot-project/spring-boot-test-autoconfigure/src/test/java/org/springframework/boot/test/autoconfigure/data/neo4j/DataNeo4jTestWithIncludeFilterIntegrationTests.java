@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,35 +16,46 @@
 
 package org.springframework.boot.test.autoconfigure.data.neo4j;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import java.time.Duration;
+
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.Neo4jContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.testsupport.testcontainers.DockerImageNames;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.stereotype.Service;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integration test with custom include filter for {@link DataNeo4jTest}.
+ * Integration test with custom include filter for {@link DataNeo4jTest @DataNeo4jTest}.
  *
  * @author Eddú Meléndez
+ * @author Michael Simons
  */
-@RunWith(SpringRunner.class)
+@Testcontainers(disabledWithoutDocker = true)
 @DataNeo4jTest(includeFilters = @Filter(Service.class))
-public class DataNeo4jTestWithIncludeFilterIntegrationTests {
+class DataNeo4jTestWithIncludeFilterIntegrationTests {
 
-	@Rule
-	public Neo4jTestServer server = new Neo4jTestServer(
-			new String[] { "org.springframework.boot.test.autoconfigure.data.neo4j" });
+	@Container
+	static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(DockerImageNames.neo4j()).withoutAuthentication()
+			.withStartupTimeout(Duration.ofMinutes(10));
+
+	@DynamicPropertySource
+	static void neo4jProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.neo4j.uri", neo4j::getBoltUrl);
+	}
 
 	@Autowired
 	private ExampleService service;
 
 	@Test
-	public void testService() {
+	void testService() {
 		assertThat(this.service.hasNode(ExampleGraph.class)).isFalse();
 	}
 

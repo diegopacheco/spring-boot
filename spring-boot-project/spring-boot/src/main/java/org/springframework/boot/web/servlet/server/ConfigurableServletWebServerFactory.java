@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,15 +18,17 @@ package org.springframework.boot.web.servlet.server;
 
 import java.io.File;
 import java.nio.charset.Charset;
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import javax.servlet.ServletContext;
 
 import org.springframework.boot.web.server.ConfigurableWebServerFactory;
 import org.springframework.boot.web.server.MimeMappings;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
+import org.springframework.boot.web.servlet.WebListenerRegistry;
 
 /**
  * A configurable {@link ServletWebServerFactory}.
@@ -41,7 +43,7 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
  * @see WebServerFactoryCustomizer
  */
 public interface ConfigurableServletWebServerFactory
-		extends ConfigurableWebServerFactory, ServletWebServerFactory {
+		extends ConfigurableWebServerFactory, ServletWebServerFactory, WebListenerRegistry {
 
 	/**
 	 * Sets the context path for the web server. The context should start with a "/"
@@ -59,27 +61,15 @@ public interface ConfigurableServletWebServerFactory
 	void setDisplayName(String displayName);
 
 	/**
-	 * The session timeout in seconds (default 30 minutes). If {@code null} then sessions
-	 * never expire.
-	 * @param sessionTimeout the session timeout
+	 * Sets the configuration that will be applied to the container's HTTP session
+	 * support.
+	 * @param session the session configuration
 	 */
-	void setSessionTimeout(Duration sessionTimeout);
+	void setSession(Session session);
 
 	/**
-	 * Sets if session data should be persisted between restarts.
-	 * @param persistSession {@code true} if session data should be persisted
-	 */
-	void setPersistSession(boolean persistSession);
-
-	/**
-	 * Set the directory used to store serialized session data.
-	 * @param sessionStoreDir the directory or {@code null} to use a default location.
-	 */
-	void setSessionStoreDir(File sessionStoreDir);
-
-	/**
-	 * Set if the DefaultServlet should be registered. Defaults to {@code true} so that
-	 * files from the {@link #setDocumentRoot(File) document root} will be served.
+	 * Set if the DefaultServlet should be registered. Defaults to {@code false} since
+	 * 2.4.
 	 * @param registerDefaultServlet if the default servlet should be registered
 	 */
 	void setRegisterDefaultServlet(boolean registerDefaultServlet);
@@ -127,5 +117,12 @@ public interface ConfigurableServletWebServerFactory
 	 * @param localeCharsetMappings the Locale to Charset mappings
 	 */
 	void setLocaleCharsetMappings(Map<Locale, Charset> localeCharsetMappings);
+
+	/**
+	 * Sets the init parameters that are applied to the container's
+	 * {@link ServletContext}.
+	 * @param initParameters the init parameters
+	 */
+	void setInitParameters(Map<String, String> initParameters);
 
 }

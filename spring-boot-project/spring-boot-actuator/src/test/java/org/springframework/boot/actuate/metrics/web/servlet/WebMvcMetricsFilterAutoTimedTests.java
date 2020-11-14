@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,17 +19,19 @@ package org.springframework.boot.actuate.metrics.web.servlet;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.MockClock;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleConfig;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -39,24 +41,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
+ * Test for {@link WebMvcMetricsFilter} with auto-timed enabled.
+ *
  * @author Jon Schneider
+ * @author Tadaya Tsuyukubo
  */
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
-public class WebMvcMetricsFilterAutoTimedTests {
+class WebMvcMetricsFilterAutoTimedTests {
 
 	@Autowired
 	private MeterRegistry registry;
-
-	@Autowired
-	private MockClock clock;
 
 	@Autowired
 	private WebApplicationContext context;
@@ -66,23 +67,23 @@ public class WebMvcMetricsFilterAutoTimedTests {
 	@Autowired
 	private WebMvcMetricsFilter filter;
 
-	@Before
-	public void setupMockMvc() {
-		this.mvc = MockMvcBuilders.webAppContextSetup(this.context)
-				.addFilters(this.filter).build();
+	@BeforeEach
+	void setupMockMvc() {
+		this.mvc = MockMvcBuilders.webAppContextSetup(this.context).addFilters(this.filter).build();
 	}
 
 	@Test
-	public void metricsCanBeAutoTimed() throws Exception {
+	void metricsCanBeAutoTimed() throws Exception {
 		this.mvc.perform(get("/api/10")).andExpect(status().isOk());
-
-		this.clock.add(SimpleConfig.DEFAULT_STEP);
-		assertThat(
-				this.registry.find("http.server.requests").tags("status", "200").timer())
-						.hasValueSatisfying((t) -> assertThat(t.count()).isEqualTo(1));
+		Timer timer = this.registry.get("http.server.requests").tags("status", "200").timer();
+		assertThat(timer.count()).isEqualTo(1L);
+		HistogramSnapshot snapshot = timer.takeSnapshot();
+		assertThat(snapshot.percentileValues()).hasSize(2);
+		assertThat(snapshot.percentileValues()[0].percentile()).isEqualTo(0.5);
+		assertThat(snapshot.percentileValues()[1].percentile()).isEqualTo(0.95);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableWebMvc
 	@Import({ Controller.class })
 	static class TestConfiguration {
@@ -98,15 +99,9 @@ public class WebMvcMetricsFilterAutoTimedTests {
 		}
 
 		@Bean
-		public WebMvcMetrics controllerMetrics(MeterRegistry registry) {
-			return new WebMvcMetrics(registry, new DefaultWebMvcTagsProvider(),
-					"http.server.requests", true, false);
-		}
-
-		@Bean
-		public WebMvcMetricsFilter webMetricsFilter(WebMvcMetrics controllerMetrics,
-				HandlerMappingIntrospector introspector) {
-			return new WebMvcMetricsFilter(controllerMetrics, introspector);
+		WebMvcMetricsFilter webMetricsFilter(WebApplicationContext context, MeterRegistry registry) {
+			return new WebMvcMetricsFilter(registry, new DefaultWebMvcTagsProvider(), "http.server.requests",
+					(builder) -> builder.publishPercentiles(0.5, 0.95).publishPercentileHistogram(true));
 		}
 
 	}
@@ -116,7 +111,7 @@ public class WebMvcMetricsFilterAutoTimedTests {
 	static class Controller {
 
 		@GetMapping("/{id}")
-		public String successful(@PathVariable Long id) {
+		String successful(@PathVariable Long id) {
 			return id.toString();
 		}
 

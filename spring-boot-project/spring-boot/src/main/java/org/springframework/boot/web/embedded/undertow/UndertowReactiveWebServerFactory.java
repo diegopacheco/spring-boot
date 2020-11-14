@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,20 +16,16 @@
 
 package org.springframework.boot.web.embedded.undertow;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 
 import io.undertow.Undertow;
-import io.undertow.UndertowOptions;
 
 import org.springframework.boot.web.reactive.server.AbstractReactiveWebServerFactory;
 import org.springframework.boot.web.reactive.server.ReactiveWebServerFactory;
 import org.springframework.boot.web.server.WebServer;
-import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.UndertowHttpHandlerAdapter;
-import org.springframework.util.Assert;
 
 /**
  * {@link ReactiveWebServerFactory} that can be used to create {@link UndertowWebServer}s.
@@ -37,17 +33,10 @@ import org.springframework.util.Assert;
  * @author Brian Clozel
  * @since 2.0.0
  */
-public class UndertowReactiveWebServerFactory extends AbstractReactiveWebServerFactory {
+public class UndertowReactiveWebServerFactory extends AbstractReactiveWebServerFactory
+		implements ConfigurableUndertowWebServerFactory {
 
-	private Integer bufferSize;
-
-	private Integer ioThreads;
-
-	private Integer workerThreads;
-
-	private Boolean directBuffers;
-
-	private List<UndertowBuilderCustomizer> builderCustomizers = new ArrayList<>();
+	private UndertowWebServerFactoryDelegate delegate = new UndertowWebServerFactoryDelegate();
 
 	/**
 	 * Create a new {@link UndertowReactiveWebServerFactory} instance.
@@ -65,81 +54,13 @@ public class UndertowReactiveWebServerFactory extends AbstractReactiveWebServerF
 	}
 
 	@Override
-	public WebServer getWebServer(HttpHandler httpHandler) {
-		Undertow.Builder builder = createBuilder(getPort());
-		UndertowHttpHandlerAdapter handler = new UndertowHttpHandlerAdapter(httpHandler);
-		builder.setHandler(handler);
-		return new UndertowWebServer(builder, getPort() >= 0);
+	public void setBuilderCustomizers(Collection<? extends UndertowBuilderCustomizer> customizers) {
+		this.delegate.setBuilderCustomizers(customizers);
 	}
 
-	private Undertow.Builder createBuilder(int port) {
-		Undertow.Builder builder = Undertow.builder();
-		if (this.bufferSize != null) {
-			builder.setBufferSize(this.bufferSize);
-		}
-		if (this.ioThreads != null) {
-			builder.setIoThreads(this.ioThreads);
-		}
-		if (this.workerThreads != null) {
-			builder.setWorkerThreads(this.workerThreads);
-		}
-		if (this.directBuffers != null) {
-			builder.setDirectBuffers(this.directBuffers);
-		}
-		if (getSsl() != null && getSsl().isEnabled()) {
-			customizeSsl(builder);
-		}
-		else {
-			builder.addHttpListener(port, getListenAddress());
-		}
-		for (UndertowBuilderCustomizer customizer : this.builderCustomizers) {
-			customizer.customize(builder);
-		}
-		return builder;
-	}
-
-	private void customizeSsl(Undertow.Builder builder) {
-		new SslBuilderCustomizer(getPort(), getAddress(), getSsl(), getSslStoreProvider())
-				.customize(builder);
-		if (getHttp2() != null) {
-			builder.setServerOption(UndertowOptions.ENABLE_HTTP2,
-					getHttp2().getEnabled());
-		}
-	}
-
-	private String getListenAddress() {
-		if (getAddress() == null) {
-			return "0.0.0.0";
-		}
-		return getAddress().getHostAddress();
-	}
-
-	public void setBufferSize(Integer bufferSize) {
-		this.bufferSize = bufferSize;
-	}
-
-	public void setIoThreads(Integer ioThreads) {
-		this.ioThreads = ioThreads;
-	}
-
-	public void setWorkerThreads(Integer workerThreads) {
-		this.workerThreads = workerThreads;
-	}
-
-	public void setDirectBuffers(Boolean directBuffers) {
-		this.directBuffers = directBuffers;
-	}
-
-	/**
-	 * Set {@link UndertowBuilderCustomizer}s that should be applied to the Undertow
-	 * {@link io.undertow.Undertow.Builder Builder}. Calling this method will replace any
-	 * existing customizers.
-	 * @param customizers the customizers to set
-	 */
-	public void setBuilderCustomizers(
-			Collection<? extends UndertowBuilderCustomizer> customizers) {
-		Assert.notNull(customizers, "Customizers must not be null");
-		this.builderCustomizers = new ArrayList<>(customizers);
+	@Override
+	public void addBuilderCustomizers(UndertowBuilderCustomizer... customizers) {
+		this.delegate.addBuilderCustomizers(customizers);
 	}
 
 	/**
@@ -148,17 +69,78 @@ public class UndertowReactiveWebServerFactory extends AbstractReactiveWebServerF
 	 * @return the customizers that will be applied
 	 */
 	public Collection<UndertowBuilderCustomizer> getBuilderCustomizers() {
-		return this.builderCustomizers;
+		return this.delegate.getBuilderCustomizers();
 	}
 
-	/**
-	 * Add {@link UndertowBuilderCustomizer}s that should be used to customize the
-	 * Undertow {@link io.undertow.Undertow.Builder Builder}.
-	 * @param customizers the customizers to add
-	 */
-	public void addBuilderCustomizers(UndertowBuilderCustomizer... customizers) {
-		Assert.notNull(customizers, "Customizers must not be null");
-		this.builderCustomizers.addAll(Arrays.asList(customizers));
+	@Override
+	public void setBufferSize(Integer bufferSize) {
+		this.delegate.setBufferSize(bufferSize);
+	}
+
+	@Override
+	public void setIoThreads(Integer ioThreads) {
+		this.delegate.setIoThreads(ioThreads);
+	}
+
+	@Override
+	public void setWorkerThreads(Integer workerThreads) {
+		this.delegate.setWorkerThreads(workerThreads);
+	}
+
+	@Override
+	public void setUseDirectBuffers(Boolean directBuffers) {
+		this.delegate.setUseDirectBuffers(directBuffers);
+	}
+
+	@Override
+	public void setUseForwardHeaders(boolean useForwardHeaders) {
+		this.delegate.setUseForwardHeaders(useForwardHeaders);
+	}
+
+	protected final boolean isUseForwardHeaders() {
+		return this.delegate.isUseForwardHeaders();
+	}
+
+	@Override
+	public void setAccessLogDirectory(File accessLogDirectory) {
+		this.delegate.setAccessLogDirectory(accessLogDirectory);
+	}
+
+	@Override
+	public void setAccessLogPattern(String accessLogPattern) {
+		this.delegate.setAccessLogPattern(accessLogPattern);
+	}
+
+	@Override
+	public void setAccessLogPrefix(String accessLogPrefix) {
+		this.delegate.setAccessLogPrefix(accessLogPrefix);
+	}
+
+	@Override
+	public void setAccessLogSuffix(String accessLogSuffix) {
+		this.delegate.setAccessLogSuffix(accessLogSuffix);
+	}
+
+	public boolean isAccessLogEnabled() {
+		return this.delegate.isAccessLogEnabled();
+	}
+
+	@Override
+	public void setAccessLogEnabled(boolean accessLogEnabled) {
+		this.delegate.setAccessLogEnabled(accessLogEnabled);
+	}
+
+	@Override
+	public void setAccessLogRotate(boolean accessLogRotate) {
+		this.delegate.setAccessLogRotate(accessLogRotate);
+	}
+
+	@Override
+	public WebServer getWebServer(org.springframework.http.server.reactive.HttpHandler httpHandler) {
+		Undertow.Builder builder = this.delegate.createBuilder(this);
+		List<HttpHandlerFactory> httpHandlerFactories = this.delegate.createHttpHandlerFactories(this,
+				(next) -> new UndertowHttpHandlerAdapter(httpHandler));
+		return new UndertowWebServer(builder, httpHandlerFactories, getPort() >= 0);
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,7 @@ package org.springframework.boot.actuate.autoconfigure.metrics.export.influx;
 import io.micrometer.influx.InfluxConfig;
 import io.micrometer.influx.InfluxConsistency;
 
-import org.springframework.boot.actuate.autoconfigure.metrics.export.StepRegistryPropertiesConfigAdapter;
+import org.springframework.boot.actuate.autoconfigure.metrics.export.properties.StepRegistryPropertiesConfigAdapter;
 
 /**
  * Adapter to convert {@link InfluxProperties} to an {@link InfluxConfig}.
@@ -27,12 +27,16 @@ import org.springframework.boot.actuate.autoconfigure.metrics.export.StepRegistr
  * @author Jon Schneider
  * @author Phillip Webb
  */
-class InfluxPropertiesConfigAdapter
-		extends StepRegistryPropertiesConfigAdapter<InfluxProperties>
+class InfluxPropertiesConfigAdapter extends StepRegistryPropertiesConfigAdapter<InfluxProperties>
 		implements InfluxConfig {
 
 	InfluxPropertiesConfigAdapter(InfluxProperties properties) {
 		super(properties);
+	}
+
+	@Override
+	public String prefix() {
+		return "management.metrics.export.influx";
 	}
 
 	@Override
@@ -57,8 +61,22 @@ class InfluxPropertiesConfigAdapter
 
 	@Override
 	public String retentionPolicy() {
-		return get(InfluxProperties::getRetentionPolicy,
-				InfluxConfig.super::retentionPolicy);
+		return get(InfluxProperties::getRetentionPolicy, InfluxConfig.super::retentionPolicy);
+	}
+
+	@Override
+	public Integer retentionReplicationFactor() {
+		return get(InfluxProperties::getRetentionReplicationFactor, InfluxConfig.super::retentionReplicationFactor);
+	}
+
+	@Override
+	public String retentionDuration() {
+		return get(InfluxProperties::getRetentionDuration, InfluxConfig.super::retentionDuration);
+	}
+
+	@Override
+	public String retentionShardDuration() {
+		return get(InfluxProperties::getRetentionShardDuration, InfluxConfig.super::retentionShardDuration);
 	}
 
 	@Override
@@ -68,7 +86,12 @@ class InfluxPropertiesConfigAdapter
 
 	@Override
 	public boolean compressed() {
-		return get(InfluxProperties::getCompressed, InfluxConfig.super::compressed);
+		return get(InfluxProperties::isCompressed, InfluxConfig.super::compressed);
+	}
+
+	@Override
+	public boolean autoCreateDb() {
+		return get(InfluxProperties::isAutoCreateDb, InfluxConfig.super::autoCreateDb);
 	}
 
 }

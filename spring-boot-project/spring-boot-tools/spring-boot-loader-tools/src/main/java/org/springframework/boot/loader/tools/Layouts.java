@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ package org.springframework.boot.loader.tools;
 import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -27,6 +28,8 @@ import java.util.Map;
  * @author Phillip Webb
  * @author Dave Syer
  * @author Andy Wilkinson
+ * @author Madhura Bhave
+ * @since 1.0.0
  */
 public final class Layouts {
 
@@ -42,7 +45,7 @@ public final class Layouts {
 		if (file == null) {
 			throw new IllegalArgumentException("File must not be null");
 		}
-		String lowerCaseFileName = file.getName().toLowerCase();
+		String lowerCaseFileName = file.getName().toLowerCase(Locale.ENGLISH);
 		if (lowerCaseFileName.endsWith(".jar")) {
 			return new Jar();
 		}
@@ -66,6 +69,12 @@ public final class Layouts {
 		}
 
 		@Override
+		public String getLibraryLocation(String libraryName, LibraryScope scope) {
+			return "BOOT-INF/lib/";
+		}
+
+		@Deprecated
+		@Override
 		public String getLibraryDestination(String libraryName, LibraryScope scope) {
 			return "BOOT-INF/lib/";
 		}
@@ -78,6 +87,16 @@ public final class Layouts {
 		@Override
 		public String getRepackagedClassesLocation() {
 			return "BOOT-INF/classes/";
+		}
+
+		@Override
+		public String getClasspathIndexFileLocation() {
+			return "BOOT-INF/classpath.idx";
+		}
+
+		@Override
+		public String getLayersIndexFileLocation() {
+			return "BOOT-INF/layers.idx";
 		}
 
 		@Override
@@ -121,15 +140,15 @@ public final class Layouts {
 	 */
 	public static class War implements Layout {
 
-		private static final Map<LibraryScope, String> SCOPE_DESTINATIONS;
+		private static final Map<LibraryScope, String> SCOPE_LOCATION;
 
 		static {
-			Map<LibraryScope, String> map = new HashMap<>();
-			map.put(LibraryScope.COMPILE, "WEB-INF/lib/");
-			map.put(LibraryScope.CUSTOM, "WEB-INF/lib/");
-			map.put(LibraryScope.RUNTIME, "WEB-INF/lib/");
-			map.put(LibraryScope.PROVIDED, "WEB-INF/lib-provided/");
-			SCOPE_DESTINATIONS = Collections.unmodifiableMap(map);
+			Map<LibraryScope, String> locations = new HashMap<>();
+			locations.put(LibraryScope.COMPILE, "WEB-INF/lib/");
+			locations.put(LibraryScope.CUSTOM, "WEB-INF/lib/");
+			locations.put(LibraryScope.RUNTIME, "WEB-INF/lib/");
+			locations.put(LibraryScope.PROVIDED, "WEB-INF/lib-provided/");
+			SCOPE_LOCATION = Collections.unmodifiableMap(locations);
 		}
 
 		@Override
@@ -138,8 +157,14 @@ public final class Layouts {
 		}
 
 		@Override
+		public String getLibraryLocation(String libraryName, LibraryScope scope) {
+			return SCOPE_LOCATION.get(scope);
+		}
+
+		@Deprecated
+		@Override
 		public String getLibraryDestination(String libraryName, LibraryScope scope) {
-			return SCOPE_DESTINATIONS.get(scope);
+			return SCOPE_LOCATION.get(scope);
 		}
 
 		@Override

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,13 @@
 
 package org.springframework.boot.actuate.autoconfigure.endpoint.web.documentation;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.context.properties.ConfigurationPropertiesReportEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation;
-import org.springframework.restdocs.payload.JsonFieldType;
 
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -38,36 +37,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Andy Wilkinson
  */
-public class ConfigurationPropertiesReportEndpointDocumentationTests
-		extends AbstractEndpointDocumentationTests {
+class ConfigurationPropertiesReportEndpointDocumentationTests extends MockMvcEndpointDocumentationTests {
 
 	@Test
-	public void configProps() throws Exception {
+	void configProps() throws Exception {
 		this.mockMvc.perform(get("/actuator/configprops")).andExpect(status().isOk())
 				.andDo(MockMvcRestDocumentation.document("configprops",
-						preprocessResponse(limit("beans")),
-						responseFields(
-								fieldWithPath("contextId")
-										.description("ID of the application context."),
-								fieldWithPath("beans.*").description(
-										"`@ConfigurationProperties` beans keyed by bean name."),
-								fieldWithPath("beans.*.prefix").description(
-										"Prefix applied to the names of the bean's properties."),
-								subsectionWithPath("beans.*.properties").description(
-										"Properties of the bean as name-value pairs."),
-								subsectionWithPath("parent")
-										.description(
-												"`@ConfigurationProperties` beans in the parent "
-														+ "context, if any.")
-										.optional().type(JsonFieldType.OBJECT))));
+						preprocessResponse(limit("contexts", getApplicationContext().getId(), "beans")),
+						responseFields(fieldWithPath("contexts").description("Application contexts keyed by id."),
+								fieldWithPath("contexts.*.beans.*")
+										.description("`@ConfigurationProperties` beans keyed by bean name."),
+								fieldWithPath("contexts.*.beans.*.prefix")
+										.description("Prefix applied to the names of the bean's properties."),
+								subsectionWithPath("contexts.*.beans.*.properties")
+										.description("Properties of the bean as name-value pairs."),
+								subsectionWithPath("contexts.*.beans.*.inputs").description(
+										"Origin and value of the configuration property used when binding to this bean."),
+								parentIdField())));
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import(BaseDocumentationConfiguration.class)
 	static class TestConfiguration {
 
 		@Bean
-		public ConfigurationPropertiesReportEndpoint endpoint() {
+		ConfigurationPropertiesReportEndpoint endpoint() {
 			return new ConfigurationPropertiesReportEndpoint();
 		}
 

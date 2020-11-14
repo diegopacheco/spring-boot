@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.boot.LazyInitializationExcludeFilter;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -27,6 +28,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.converter.ByteArrayMessageConverter;
 import org.springframework.messaging.converter.DefaultContentTypeResolver;
@@ -35,9 +37,7 @@ import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.config.AbstractMessageBrokerConfiguration;
 import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.socket.config.annotation.AbstractWebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.config.annotation.DelegatingWebSocketMessageBrokerConfiguration;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
@@ -46,17 +46,16 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * @author Andy Wilkinson
  * @since 1.3.0
  */
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = Type.SERVLET)
 @ConditionalOnClass(WebSocketMessageBrokerConfigurer.class)
 @AutoConfigureAfter(JacksonAutoConfiguration.class)
 public class WebSocketMessagingAutoConfiguration {
 
-	@Configuration
-	@ConditionalOnBean({ DelegatingWebSocketMessageBrokerConfiguration.class,
-			ObjectMapper.class })
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnBean({ DelegatingWebSocketMessageBrokerConfiguration.class, ObjectMapper.class })
 	@ConditionalOnClass({ ObjectMapper.class, AbstractMessageBrokerConfiguration.class })
-	static class WebSocketMessageConverterConfiguration
-			extends AbstractWebSocketMessageBrokerConfigurer {
+	static class WebSocketMessageConverterConfiguration implements WebSocketMessageBrokerConfigurer {
 
 		private final ObjectMapper objectMapper;
 
@@ -65,13 +64,7 @@ public class WebSocketMessagingAutoConfiguration {
 		}
 
 		@Override
-		public void registerStompEndpoints(StompEndpointRegistry registry) {
-			// The user must register their own endpoints
-		}
-
-		@Override
-		public boolean configureMessageConverters(
-				List<MessageConverter> messageConverters) {
+		public boolean configureMessageConverters(List<MessageConverter> messageConverters) {
 			MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 			converter.setObjectMapper(this.objectMapper);
 			DefaultContentTypeResolver resolver = new DefaultContentTypeResolver();
@@ -81,6 +74,11 @@ public class WebSocketMessagingAutoConfiguration {
 			messageConverters.add(new ByteArrayMessageConverter());
 			messageConverters.add(converter);
 			return false;
+		}
+
+		@Bean
+		static LazyInitializationExcludeFilter eagerStompWebSocketHandlerMapping() {
+			return (name, definition, type) -> name.equals("stompWebSocketHandlerMapping");
 		}
 
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,27 +18,26 @@ package org.springframework.boot.web.servlet.context;
 
 import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.boot.web.server.WebServer;
-import org.springframework.util.StringUtils;
 
 /**
- * Event to be published after the {@link ServletWebServerApplicationContext} is refreshed
- * and the {@link WebServer} is ready. Useful for obtaining the local port of a running
- * server.
+ * Event to be published after the {@link WebServer} is ready. Useful for obtaining the
+ * local port of a running server.
  *
  * <p>
  * Normally it will have been started, but listeners are free to inspect the server and
  * stop and start it if they want to.
  *
  * @author Dave Syer
+ * @since 2.0.0
  */
 @SuppressWarnings("serial")
 public class ServletWebServerInitializedEvent extends WebServerInitializedEvent {
 
 	private final ServletWebServerApplicationContext applicationContext;
 
-	public ServletWebServerInitializedEvent(WebServer source,
+	public ServletWebServerInitializedEvent(WebServer webServer,
 			ServletWebServerApplicationContext applicationContext) {
-		super(source);
+		super(webServer);
 		this.applicationContext = applicationContext;
 	}
 
@@ -51,15 +50,6 @@ public class ServletWebServerInitializedEvent extends WebServerInitializedEvent 
 	@Override
 	public ServletWebServerApplicationContext getApplicationContext() {
 		return this.applicationContext;
-	}
-
-	@Override
-	public String getServerId() {
-		String name = this.applicationContext.getNamespace();
-		if (StringUtils.isEmpty(name)) {
-			name = "server";
-		}
-		return name;
 	}
 
 }
